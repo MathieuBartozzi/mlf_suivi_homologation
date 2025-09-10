@@ -1,0 +1,15 @@
+# Fichiers Python
+__pycache__/
+*.pyc
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Environnements virtuels
+.venv/
+env/
+venv/
+.suivi_homol/
+
+# MacOS
+.DS_Store
