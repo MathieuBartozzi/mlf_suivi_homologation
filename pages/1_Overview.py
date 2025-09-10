@@ -89,16 +89,21 @@ with col2 :
     has_geo = all(c in df.columns for c in (lat_col, lon_col, name_col))
     map_df = df.dropna(subset=[lat_col, lon_col])
     fig = px.scatter_mapbox(
-            df,
-            lat="latitude",
-            lon="longitude",
-            hover_name="etablissement",
-            # hover_data={"pays": True, "ville": True, metric_col: True, "score_global": True},
-            color=metric_col,
-            color_continuous_scale="Viridis",
-            zoom=1,
-            height=500,
-        )
+        df,
+        lat="latitude",
+        lon="longitude",
+        hover_name="etablissement",
+        color=metric_col,
+        color_continuous_scale="Viridis",
+        zoom=1,
+        height=500,
+        custom_data=[df["score_global"]],  # <-- on injecte le score global
+    )
+
+    # Customiser le hover (nom + score global)
+    fig.update_traces(
+        hovertemplate="<b>%{hovertext}</b><br>Score global = %{customdata[0]:.1f}<extra></extra>"
+    )
 
     fig.update_layout(mapbox_style="carto-positron", margin=dict(l=0, r=0, t=0, b=0))
 
@@ -131,7 +136,7 @@ def ranking_table(d: pd.DataFrame, metric: str, top: bool = True, n: int = 10) -
     return dd.reset_index(drop=True)
 
 
-ltab, rtab = st.tabs(["Top N", "Bottom N"])
+ltab, rtab = st.tabs(["Top 3", "Bottom 3"])
 with ltab:
     top_df = ranking_table(df, metric_col, top=True, n=3)
     st.dataframe(top_df, use_container_width=True)
