@@ -24,10 +24,6 @@ METRICS = {
 
 
 
-# with st.expander("Paramètres d’affichage", expanded=False):
-#     top_n = st.slider("Top/Bottom N", 3, 30, 10)
-    # show_modebar = st.toggle("Afficher la barre d’outils Plotly", value=False)
-
 # --- KPIs (6 x st.metric)
 col1,col2=st.columns([1,3])
 
@@ -42,8 +38,8 @@ kpis = {
 
 with col1 :
     with st.container(border=True):
-        st.metric("Score global", df["score_global"].mean())
-
+        mean_score = df["score_global"].mean()
+        st.metric("Score global", f"{mean_score:.1f}/100")
     with st.container(border=True):
         kpis_df = (
             pd.DataFrame.from_dict(kpis, orient="index", columns=["valeur"])
@@ -145,6 +141,6 @@ with rtab:
 
 st.divider()
 
-# --- Table brute (expander)
-with st.expander("Table brute (toutes colonnes)"):
-    st.dataframe(df, use_container_width=True)
+# # --- Table brute (expander)
+# with st.expander("Table brute (toutes colonnes)"):
+#     st.dataframe(df, use_container_width=True)
