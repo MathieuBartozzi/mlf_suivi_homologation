@@ -13,3 +13,6 @@ venv/
 
 # MacOS
 .DS_Store
+
+# Ignorer les fichiers OCR JSON
+data/ocr/*.json

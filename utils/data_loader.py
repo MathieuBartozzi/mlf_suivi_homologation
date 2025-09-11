@@ -1,4 +1,3 @@
-# utils/data_loader.py
 from __future__ import annotations
 import pandas as pd
 import streamlit as st
@@ -7,7 +6,7 @@ import streamlit as st
 CSV_EXPORT = "https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
 
 
-@st.cache_data()
+@st.cache_data(show_spinner=False)
 def load_data() -> pd.DataFrame:
     sheet_id = st.secrets["load_csv"]["sheet_id"]
     gid = st.secrets["load_csv"]["gid"]
@@ -36,7 +35,7 @@ def load_data() -> pd.DataFrame:
 FILE_ID = st.secrets["ocr_index"]["drive_file_id"]
 URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
-@st.cache_resource
+@st.cache_data(show_spinner=False)
 def load_index():
     try:
         df_index=pd.read_parquet(URL)

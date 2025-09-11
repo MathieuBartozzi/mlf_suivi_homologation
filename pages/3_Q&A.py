@@ -1,90 +1,3 @@
-# import numpy as np
-# import streamlit as st
-# from openai import OpenAI
-# from utils.data_loader import load_index
-
-# # ---- Config OpenAI ----
-# client = OpenAI(api_key=st.secrets["KEY"]["OPENAI_API_KEY"])
-
-# # ---- Charger index vectoriel ----
-# if "df_index" not in st.session_state:
-#     st.session_state["df_index"] = load_index()
-
-# df_index = st.session_state["df_index"]
-
-# # ---- Liste des établissements disponibles ----
-# ETABS = sorted(df_index["doc"].unique())
-
-# # ---- Similarité cosinus ----
-# def cosine_similarity(a, b):
-#     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
-
-# # ---- Détection d’établissement dans la question ----
-# def detect_etab(query: str) -> str | None:
-#     for etab in ETABS:
-#         # détection simple (nom du doc ou partie du nom dans la question)
-#         if etab.lower().replace("_", " ") in query.lower():
-#             return etab
-#     return None
-
-# # ---- Recherche ----
-# def search(query, etab=None, top_k=3, model="text-embedding-3-small"):
-#     resp = client.embeddings.create(model=model, input=query)
-#     query_emb = np.array(resp.data[0].embedding)
-
-#     sub_df = df_index if etab is None else df_index[df_index["doc"] == etab]
-
-#     sims = []
-#     for _, row in sub_df.iterrows():
-#         if row["embedding"] is None:
-#             continue
-#         emb = np.array(row["embedding"])
-#         sims.append((cosine_similarity(query_emb, emb), row["doc"], row["page"], row["text"]))
-
-#     return sorted(sims, key=lambda x: x[0], reverse=True)[:top_k]
-
-# # ---- Génération réponse ----
-# def answer_question(query, top_k=3):
-#     etab = detect_etab(query)
-#     results = search(query, etab=etab, top_k=top_k)
-
-#     context = "\n\n".join([f"Doc: {doc} (p.{page})\n{text}" for _, doc, page, text in results])
-
-#     if etab:
-#         system_prompt = f"Tu es un assistant spécialisé. Réponds UNIQUEMENT pour l’établissement : {etab}. Ignore tout extrait d’autres établissements."
-#     else:
-#         system_prompt = "Tu es un assistant spécialisé. Réponds en t’appuyant uniquement sur les extraits ci-dessous."
-
-#     resp = client.chat.completions.create(
-#         model="gpt-5",
-#         messages=[
-#             {"role": "system", "content": system_prompt},
-#             {"role": "user", "content": f"Question: {query}\n\nExtraits:\n{context}"}
-#         ]
-#     )
-#     return resp.choices[0].message.content
-
-# # ---- UI ----
-# st.header("💬 Smart Chat")
-
-# if "messages" not in st.session_state:
-#     st.session_state["messages"] = []
-
-# # Afficher l’historique
-# for msg in st.session_state["messages"]:
-#     with st.chat_message(msg["role"]):
-#         st.markdown(msg["content"])
-
-# # Input utilisateur
-# if query := st.chat_input("Pose ta question sur les rapports d’homologation..."):
-#     st.session_state["messages"].append({"role": "user", "content": query})
-#     with st.chat_message("user"):
-#         st.markdown(query)
-
-#     answer = answer_question(query)
-#     st.session_state["messages"].append({"role": "assistant", "content": answer})
-#     with st.chat_message("assistant"):
-#         st.markdown(answer)
 
 
 import numpy as np
@@ -200,7 +113,14 @@ def answer_question(query, top_k=5):
     return response.choices[0].message.content
 
 # ---- UI ----
-st.header("💬 Smart Chat")
+st.header("Votre espace de questions")
+
+st.warning(
+    "Cet outil vous permet de poser vos questions sur les données disponibles. "
+    "Les réponses sont générées automatiquement et peuvent être approximatives. "
+    "Il est proposé en version bêta : à utiliser comme une aide à l’exploration, "
+    "et non comme une source unique de vérité."
+)
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
