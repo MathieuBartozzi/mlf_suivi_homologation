@@ -3,9 +3,11 @@ from __future__ import annotations
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
 st.header("Vue d’ensemble du réseau")
+
+
+
 
 df = st.session_state.get('df')
 if df is None or df.empty:
