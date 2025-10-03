@@ -11,11 +11,11 @@ from utils.authenticate import authenticate, logout
 
 st.set_page_config(page_title="MLF – Dashboard",page_icon=":material/dashboard:", layout="wide")
 
-user = authenticate()
+# user = authenticate()
 
-if st.session_state.get("show_welcome", False):
-    st.success(f"Bienvenue, {user} ! 🎉")
-    st.session_state["show_welcome"] = False
+# if st.session_state.get("show_welcome", False):
+#     st.success(f"Bienvenue, {user} ! 🎉")
+#     st.session_state["show_welcome"] = False
 
 # Étape 1
 with st.spinner("Chargement des données…"):

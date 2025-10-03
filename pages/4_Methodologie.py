@@ -19,9 +19,9 @@ Toutes ces informations ont ensuite été rassemblées et harmonisées dans un *
 (au format tableau), qui sert de base au calcul des scores.
 
 C’est à partir de ce fichier structuré que sont appliquées les étapes suivantes :
-- normalisation des indicateurs,
-- calcul des scores par thématique,
-- pondération et calcul du score global.
+- normalisation et transformation des indicateurs,
+- calcul des scores par dimension,
+- pondération et calcul du score global avec ajustement dynamique en cas de données manquantes.
 """)
 
 # --- Méthodologie ---
@@ -33,60 +33,51 @@ Cette page décrit la logique appliquée pour construire les scores affichés da
 
 # --- Section 1 : Dimensions ---
 st.subheader("1. Dimensions évaluées")
+
 st.markdown("""
-Les établissements sont évalués sur **5 dimensions**, chacune ramenée sur 100 :
+Les établissements sont évalués sur **6 dimensions**, chacune ramenée sur 100 :
 
-1. **Qualité de l’enseignement**
-   - Taux de réussite au DNB (2024)
-   - Taux de réussite au Bac (2024)
-
-2. **Sécurité & bien-être**
-   - Statut du PPMS (plan particulier de mise en sûreté)
-   - Fonctionnement des instances représentatives
-
-3. **Projets & partenariats**
-   - Statut du projet d’établissement
-   - Nombre d’axes renseignés dans le projet
-   - Existence de partenariats
-
-4. **Inclusion & climat scolaire**
-   - Dispositifs d’inclusion renseignés
-   - Nombre de langues vivantes enseignées (0–5 ramenées sur 0–100)
-   - Certifications spécifiques
-
-5. **Numérique & données**
-   - Infrastructures mentionnées (wifi, CDI, gymnase, etc.)
-   - Certifications associées
-""")
+| Dimensions                               | Indicateurs principaux                                                                 |
+|------------------------------------------|----------------------------------------------------------------------------------------|
+| **Résultats aux examens (30%)**          | - Taux de réussite au DNB (2024) <br> - Taux de réussite au Bac (2024) |
+| **Gouvernance & sécurité (20%)**         | - Statut du projet d’établissement <br> - Fonctionnement des instances représentatives <br> - PPMS (plan particulier de mise en sûreté) |
+| **Stratégie & partenariats (15%)**       | - Nombre d’axes stratégiques du projet <br> - Existence de partenariats <br> - Orientation post-bac |
+| **Climat & inclusion (15%)**             | - Présence de dispositifs inclusifs (oui / en construction / non) |
+| **Ouverture linguistique & culturelle (10%)** | - Nombre de langues vivantes enseignées (0–5 ramenées sur 0–100) <br> - Certifications académiques (DELF, DELE, Cambridge, etc.) |
+| **Ressources & numérique (10%)**         | - Infrastructures (niveau de modernité et spécialisation) <br> - Ressources humaines (structuration, stabilité) <br> - Certifications numériques |
+""", unsafe_allow_html=True)
 
 # --- Section 2 : Règles ---
 st.subheader("2. Règles de transformation")
 st.markdown("""
-- **Pourcentages** : convertis sur 0–100 (si la donnée est entre 0 et 1, elle est multipliée par 100).
-- **Présence** : 80 si renseigné, 40 sinon.
-- **Statut** : 90 si *à jour/ok*, 60 si *en cours/partiel*, 30 si *non conforme/absent*.
-- **Listes** : base de 40, +12 points par élément renseigné, plafonné à 100.
-- **Mots-clés** : base de 40, +12 points par mot-clé trouvé, plafonné à 100.
+- **Pourcentages** : valeurs ramenées entre 0 et 100 (si déjà en %).
+- **Présence/absence** : 80 si renseigné, 40 sinon.
+- **Statuts** : valeurs traduites selon une grille (ex. *à jour* = 90, *en construction* = 60, *inexistant* = 30).
+- **Listes (axes, certifications, etc.)** : base de 40, +12 points par élément identifié, plafonné à 100.
+- **Certifications linguistiques/numériques** : 40 si aucune, 60 si limité (≤2), 90 si nombreuses (>2).
+- **Valeurs manquantes** : ignorées dans le calcul de la moyenne de dimension.
 
-Toutes les moyennes sont calculées en ignorant les valeurs manquantes.
+Le score global est recalculé dynamiquement : si une dimension manque, ses poids sont redistribués proportionnellement sur les autres.
 """)
 
 # --- Section 3 : Pondération ---
 st.subheader("3. Pondération du score global")
 
 labels = [
-    "Qualité de l’enseignement",
-    "Sécurité & bien-être",
-    "Projets & partenariats",
-    "Inclusion & climat scolaire",
-    "Numérique & données",
+    "Résultats aux examens",
+    "Gouvernance & sécurité",
+    "Stratégie & partenariats",
+    "Climat & inclusion",
+    "Ouverture linguistique & culturelle",
+    "Ressources & numérique",
 ]
 values = [
-    weights["qualite_enseignement"],
-    weights["securite_bien_etre"],
-    weights["projets_partenariats"],
-    weights["inclusion_climat"],
-    weights["numerique_donnees"],
+    weights["resultats_aux_examens"],
+    weights["gouvernance_securite"],
+    weights["strategie_partenariats"],
+    weights["climat_inclusion"],
+    weights["ouverture_linguistique"],
+    weights["ressources_numerique"],
 ]
 
 # Tableau des pondérations

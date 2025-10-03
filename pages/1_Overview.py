@@ -17,26 +17,27 @@ if df is None or df.empty:
 # --- Contrôles
 METRICS = {
     "Score global": "score_global",
-    "Qualité de l’enseignement": "score_qualite_enseignement",
-    "Sécurité & bien-être": "score_securite_bien_etre",
-    "Projets & partenariats": "score_projets_partenariats",
-    "Inclusion & climat scolaire": "score_inclusion_climat",
-    "Numérique & données": "score_numerique_donnees",
+    "Résultats aux examens": "score_resultats_aux_examens",
+    "Gouvernance & sécurité": "score_gouvernance_securite",
+    "Stratégie & partenariats": "score_strategie_partenariats",
+    "Climat & inclusion": "score_climat_inclusion",
+    "Ouverture linguistique & culturelle": "score_ouverture_linguistique",
+    "Ressources & numérique": "score_ressources_numerique",
 }
 
+
+kpis = {
+    "Résultats aux examens": df["score_resultats_aux_examens"].mean(),
+    "Gouvernance & sécurité": df["score_gouvernance_securite"].mean(),
+    "Stratégie & partenariats": df["score_strategie_partenariats"].mean(),
+    "Climat & inclusion": df["score_climat_inclusion"].mean(),
+    "Ouverture linguistique & culturelle": df["score_ouverture_linguistique"].mean(),
+    "Ressources & numérique": df["score_ressources_numerique"].mean(),
+}
 
 
 # --- KPIs (6 x st.metric)
 col1,col2=st.columns([1,3])
-
-kpis = {
-    # "Score global": df["score_global"].mean(),
-    "Qualité de l’enseignement": df["score_qualite_enseignement"].mean(),
-    "Sécurité & bien-être": df["score_securite_bien_etre"].mean(),
-    "Projets & partenariats": df["score_projets_partenariats"].mean(),
-    "Inclusion & climat scolaire": df["score_inclusion_climat"].mean(),
-    "Numérique & données": df["score_numerique_donnees"].mean(),
-}
 
 with col1 :
     with st.container(border=True):
@@ -121,30 +122,27 @@ st.divider()
 
 
 
-st.subheader("Classements")
+st.subheader("Classements complet")
 
 
-def ranking_table(d: pd.DataFrame, metric: str, top: bool = True, n: int = 10) -> pd.DataFrame:
-    cols = ["etablissement", "pays", "ville", metric]
-    if metric != "score_global":
-        cols.append("score_global")
-
+def ranking_table_full(d: pd.DataFrame) -> pd.DataFrame:
+    cols = [
+        "etablissement",
+        "score_global",
+        "score_resultats_aux_examens",
+        "score_gouvernance_securite",
+        "score_strategie_partenariats",
+        "score_climat_inclusion",
+        "score_ouverture_linguistique",
+        "score_ressources_numerique",
+    ]
     dd = d[cols].copy()
-    dd = dd.dropna(subset=[metric])
-    dd = dd.sort_values(by=metric, ascending=not top).head(n)
-
-    # Renommer la colonne sélectionnée
-    dd = dd.rename(columns={metric: f"{metric} (sélection)"})
+    dd = dd.dropna(subset=["score_global"])
+    dd = dd.sort_values(by="score_global", ascending=False)
     return dd.reset_index(drop=True)
 
-
-ltab, rtab = st.tabs(["Top 3", "Bottom 3"])
-with ltab:
-    top_df = ranking_table(df, metric_col, top=True, n=3)
-    st.dataframe(top_df, use_container_width=True)
-with rtab:
-    bottom_df = ranking_table(df, metric_col, top=False, n=3)
-    st.dataframe(bottom_df, use_container_width=True)
+# Affichage dans Streamlit
+st.dataframe(ranking_table_full(df), use_container_width=True)
 
 st.divider()
 

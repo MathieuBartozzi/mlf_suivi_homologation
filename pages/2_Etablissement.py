@@ -18,12 +18,14 @@ if df is None or df.empty:
 
 # ---- Utilitaires locaux -----------------------------------------------------
 THEMES = [
-    ("Qualité de l’enseignement", "score_qualite_enseignement"),
-    ("Sécurité & bien-être", "score_securite_bien_etre"),
-    ("Projets & partenariats", "score_projets_partenariats"),
-    ("Inclusion & climat scolaire", "score_inclusion_climat"),
-    ("Numérique & données", "score_numerique_donnees"),
+    ("Résultats aux examens", "score_resultats_aux_examens"),
+    ("Gouvernance & sécurité", "score_gouvernance_securite"),
+    ("Stratégie & partenariats", "score_strategie_partenariats"),
+    ("Climat & inclusion", "score_climat_inclusion"),
+    ("Ouverture linguistique & culturelle", "score_ouverture_linguistique"),
+    ("Ressources & numérique", "score_ressources_numerique"),
 ]
+
 
 # Colonnes multi-valeurs affichées comme texte avec virgules
 TEXT_LIST_COLS = ["projet_etablissement_axes", "partenariats"]
@@ -34,13 +36,14 @@ BULLET_LIST_COLS = ["points_forts", "points_faibles", "recommandations"]
 
 INFO_BLOCKS = [
     ("Profil & effectifs", ["nb_niveaux", "niveau_max", "effectifs_total"]),
-    ("Projet & instances", ["projet_etablissement_status", "projet_etablissement_axes", "instances_status"]),
-    ("Évaluations & résultats", ["evaluations_nationales", "dnb_2024", "bac_2024"]),
-    ("Inclusion & langues", ["inclusion_dispositif", "nb_lve", "certifications"]),
-    ("Infrastructures & sécurité", ["infrastructures", "ppms_status"]),
-    ("Ressources humaines", ["ressources_humaines", "nb_personnels"]),
-    ("Partenariats & orientation", ["partenariats", "orientation_post_bac"]),
+    ("Résultats aux examens", ["dnb_2024", "bac_2024", "evaluations_nationales"]),
+    ("Gouvernance & sécurité", ["projet_etablissement_status", "instances_status", "ppms_status"]),
+    ("Stratégie & partenariats", ["projet_etablissement_axes", "partenariats", "orientation_post_bac"]),
+    ("Climat & inclusion", ["inclusion_dispositif"]),
+    ("Ouverture linguistique & culturelle", ["nb_lve", "certifications"]),
+    ("Ressources & numérique", ["infrastructures", "ressources_humaines", "nb_personnels"]),
 ]
+
 
 
 # def parse_list_cell(val) -> list[str]:

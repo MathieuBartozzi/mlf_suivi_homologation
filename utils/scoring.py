@@ -1,155 +1,173 @@
 
-# utils/scoring.py
-from __future__ import annotations
 import pandas as pd
 import numpy as np
-import streamlit as st
-import ast
-import re
 
-# Utilitaires
-
-# Pondérations par défaut (fixes, versionnées avec le code)
+# --------------------
+# Pondérations par défaut (6 dimensions)
+# --------------------
 DEFAULT_WEIGHTS = {
-    "qualite_enseignement": 0.25,
-    "securite_bien_etre": 0.20,
-    "projets_partenariats": 0.20,
-    "inclusion_climat": 0.20,
-    "numerique_donnees": 0.15,
+    "resultats_aux_examens": 0.30,
+    "gouvernance_securite": 0.20,
+    "strategie_partenariats": 0.15,
+    "climat_inclusion": 0.15,
+    "ouverture_linguistique": 0.10,
+    "ressources_numerique": 0.10,
 }
 
-
-def _to_percent(s: pd.Series) -> pd.Series:
-    x = pd.to_numeric(s, errors='coerce')
-    # si probable fraction (0–1), on convertit en %
-    if x.dropna().between(0, 1).mean() > 0.8:
-        x = x * 100
+# --------------------
+# Fonctions utilitaires réellement utilisées
+# --------------------
+def _to_percent(s) -> pd.Series:
+    """Convertit en pourcentage (0–100). Données déjà en entiers, donc pas de *100."""
+    if s is None:
+        return pd.Series([np.nan])
+    if not isinstance(s, (pd.Series, pd.DataFrame)):
+        s = pd.Series([s])
+    x = pd.to_numeric(s, errors="coerce")
     return x.clip(0, 100)
 
 
 def _presence_score(series: pd.Series) -> pd.Series:
-    # 80 si non vide, 40 sinon
+    """Score simple présence/absence : 80 si renseigné, 40 sinon."""
     def f(val):
         if val is None:
             return np.nan
         s = str(val).strip().lower()
-        if s in ("", "nan", "none", "n/a", "na"):
+        if s in ("", "nan", "none", "n/a", "na", "non précisé"):
             return 40.0
         return 80.0
     return series.map(f)
 
-
-def _status_score(series: pd.Series) -> pd.Series:
-    # mapping simple basé sur mots-clés usuels
-    def f(val):
-        if val is None or (isinstance(val, float) and np.isnan(val)):
-            return np.nan
-        s = str(val).lower()
-        if any(k in s for k in ["à jour", "a jour", "ok", "actif", "valide", "conforme"]):
-            return 90.0
-        if any(k in s for k in ["en cours", "partiel", "partiellement", "à mettre à jour", "a mettre a jour"]):
-            return 60.0
-        if any(k in s for k in ["non", "absent", "inactif", "non conforme"]):
-            return 30.0
-        return 70.0
-    return series.map(f)
-
-
-def _len_list_score(series: pd.Series, base: float = 40.0, step: float = 12.0, cap: float = 100.0) -> pd.Series:
-    def f(val):
-        if val is None or (isinstance(val, float) and np.isnan(val)):
-            return np.nan
-        s = str(val).strip()
-        try:
-            lst = ast.literal_eval(s) if (s.startswith("[") and s.endswith("]")) else []
-            L = len(lst)
-            return float(min(cap, base + L * step))
-        except Exception:
-            return np.nan
-    return series.map(f)
-
-
-def _keyword_count_score(series: pd.Series, keywords=None) -> pd.Series:
-    if keywords is None:
-        keywords = ["wifi", "laboratoire", "labo", "cdi", "gymnase", "terrain", "tablettes", "ordinateurs"]
-    regex = re.compile("|".join(map(re.escape, keywords)), re.IGNORECASE)
-    def f(val):
-        if not isinstance(val, str):
-            return np.nan
-        count = len(regex.findall(val))
-        return float(min(100, 40 + count * 12))
-    return series.map(f)
-
-
-def _mean_ignore_nan(df: pd.DataFrame, cols: list[str]) -> pd.Series:
-    sub = df[cols].copy()
-    return sub.apply(pd.to_numeric, errors='coerce').mean(axis=1)
-
-
-# Calcul des 5 scores + global
-
+# --------------------
+# Calcul des scores
+# --------------------
 def compute_scores(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
+    df.columns = df.columns.str.lower()  # harmoniser les noms de colonnes
 
-    # Proxies par thématique (ajustables si besoin)
-    # 1) Qualité de l’enseignement
-    q_dnb = _to_percent(df.get('dnb_2024'))
-    q_bac = _to_percent(df.get('bac_2024'))
-    score_qualite = _mean_ignore_nan(pd.concat({'dnb': q_dnb, 'bac': q_bac}, axis=1), ['dnb', 'bac'])
+    # === 1. Résultats aux examens ===
+    q_dnb = _to_percent(df.get("dnb_2024"))
+    q_bac = _to_percent(df.get("bac_2024"))
+    df["score_resultats_aux_examens"] = pd.concat({"dnb": q_dnb, "bac": q_bac}, axis=1).mean(axis=1)
 
-    # 2) Sécurité & bien-être
-    s_ppms = _status_score(df.get('ppms_status'))
-    s_instances = _status_score(df.get('instances_status'))
-    score_securite = _mean_ignore_nan(pd.concat({'ppms': s_ppms, 'inst': s_instances}, axis=1), ['ppms', 'inst'])
+    # === 2. Gouvernance & sécurité ===
+    map_proj = {"à jour": 90, "en construction": 60, "partiel": 60, "inexistant": 30}
+    map_ppms = {"validé": 90, "en attente": 60, "pas d'information": 40}
+    map_instances = {"complètes": 90}
 
-    # 3) Projets & partenariats
-    p_proj_stat = _status_score(df.get('projet_etablissement_status'))
-    p_proj_axes = _len_list_score(df.get('projet_etablissement_axes'))
-    p_part = _presence_score(df.get('partenariats'))
-    score_projets = _mean_ignore_nan(pd.concat({'stat': p_proj_stat, 'axes': p_proj_axes, 'part': p_part}, axis=1), ['stat', 'axes', 'part'])
+    df["score_gouvernance_securite"] = pd.concat({
+        "proj": df["projet_etablissement_status"].map(map_proj),
+        "ppms": df["ppms_status"].map(map_ppms),
+        "inst": df["instances_status"].map(map_instances).fillna(70),
+    }, axis=1).mean(axis=1)
 
-    # 4) Inclusion & climat scolaire
-    i_inclusion = _presence_score(df.get('inclusion_dispositif'))
-    i_lve = _to_percent(df.get('nb_lve'))  # si nb_lve est un compte, on le ramène grossièrement: <=5 → 0–100
-    if 'nb_lve' in df.columns:
-        # si nb_lve ressemble à un petit entier (0–8), on scale simple
-        x = pd.to_numeric(df['nb_lve'], errors='coerce')
-        i_lve = (x.fillna(0).clip(0, 5) / 5.0) * 100.0
-    i_certif = _presence_score(df.get('certifications'))
-    score_inclusion = _mean_ignore_nan(pd.concat({'inc': i_inclusion, 'lve': i_lve, 'cert': i_certif}, axis=1), ['inc', 'lve', 'cert'])
+    # === 3. Stratégie & partenariats ===
+    def score_axes(val):
+        if pd.isna(val):
+            return np.nan
+        return min(100, 40 + len(str(val).split(",")) * 12)
 
-    # 5) Numérique & données
-    n_infra = _keyword_count_score(df.get('infrastructures'))
-    n_certif = _presence_score(df.get('certifications'))
-    score_numerique = _mean_ignore_nan(pd.concat({'infra': n_infra, 'cert': n_certif}, axis=1), ['infra', 'cert'])
+    map_orientation = {
+        "structuré mais diversifié": 90,
+        "structuré vers la france": 80,
+        "centré sur le pays hôte": 70,
+        "dispositif limité / informel": 40,
+        "—": 30,
+    }
 
-    # Assemblage + normalisation douce 0–100
-    for name, s in [
-        ('score_qualite_enseignement', score_qualite),
-        ('score_securite_bien_etre', score_securite),
-        ('score_projets_partenariats', score_projets),
-        ('score_inclusion_climat', score_inclusion),
-        ('score_numerique_donnees', score_numerique),
-    ]:
-        df[name] = s.clip(lower=0, upper=100)
+    df["score_strategie_partenariats"] = pd.concat({
+        "axes": df["projet_etablissement_axes"].map(score_axes),
+        "part": df["partenariats"].apply(lambda x: 80 if pd.notna(x) and str(x).strip() != "" else 40),
+        "orient": df["orientation_post_bac"].str.lower().map(map_orientation),
+    }, axis=1).mean(axis=1)
 
-    # Score global pondéré
-    weights = DEFAULT_WEIGHTS  # ← plus de st.secrets
+    # === 4. Climat & inclusion ===
+    map_inclusion = {"oui": 90, "en construction": 60, "non": 30}
+    df["score_climat_inclusion"] = df["inclusion_dispositif"].str.lower().map(map_inclusion)
 
-    total = sum(weights.values()) or 1.0
-    wq, ws, wp, wi, wn = [weights[k] / total for k in DEFAULT_WEIGHTS]
+    # === 5. Ouverture linguistique & culturelle ===
+    x = pd.to_numeric(df.get("nb_lve"), errors="coerce")
+    lve_score = (x.fillna(0).clip(0, 5) / 5.0) * 100
 
-    df["score_global"] = (
-        df["score_qualite_enseignement"] * wq +
-        df["score_securite_bien_etre"]    * ws +
-        df["score_projets_partenariats"]  * wp +
-        df["score_inclusion_climat"]      * wi +
-        df["score_numerique_donnees"]     * wn
-    ).round(1)
+    def score_certifs(val):
+        if not isinstance(val, str) or val.strip().lower() in ["", "non précisé"]:
+            return 40
+        n = len(val.split(","))
+        return 60 if n <= 2 else 90
+
+    certif_score = df["certifications"].map(score_certifs)
+
+    df["score_ouverture_linguistique"] = pd.concat({
+        "lve": lve_score,
+        "cert": certif_score,
+    }, axis=1).mean(axis=1)
+
+    # === 6. Ressources & numérique ===
+    map_infra = {
+        "limitées": 30,
+        "fonctionnelles de base": 60,
+        "diversifiées et spécialisées": 80,
+        "campus complet et moderne": 100,
+    }
+    map_rh = {"structuré": 90, "perfectible": 70, "fragilisé": 40, "critique": 20}
+
+    df["score_ressources_numerique"] = pd.concat({
+        "infra": df["infrastructures"].str.lower().map(map_infra),
+        "rh": df["ressources_humaines"].str.lower().map(map_rh),
+        "certnum": df["certifications"].map(score_certifs),
+    }, axis=1).mean(axis=1)
+
+    # === Score global avec ajustement dynamique ===
+    weights = DEFAULT_WEIGHTS.copy()
+    score_to_weight = {
+        "score_resultats_aux_examens": "resultats_aux_examens",
+        "score_gouvernance_securite": "gouvernance_securite",
+        "score_strategie_partenariats": "strategie_partenariats",
+        "score_climat_inclusion": "climat_inclusion",
+        "score_ouverture_linguistique": "ouverture_linguistique",
+        "score_ressources_numerique": "ressources_numerique",
+    }
+
+    global_scores, incomplete_flags, missing_texts = [], [], []
+    for _, row in df.iterrows():
+        vals = {col: row[col] for col in score_to_weight.keys()}
+        valid_dims = {k: v for k, v in vals.items() if not pd.isna(v)}
+        missing = [k for k, v in vals.items() if pd.isna(v)]
+
+        if not valid_dims:
+            global_scores.append(np.nan)
+            incomplete_flags.append(True)
+            missing_texts.append("Toutes les dimensions manquent")
+            continue
+
+        sub_weights = {k: weights[score_to_weight[k]] for k in valid_dims}
+        total_w = sum(sub_weights.values())
+        norm_weights = {k: w / total_w for k, w in sub_weights.items()}
+
+        gscore = sum(valid_dims[k] * norm_weights[k] for k in valid_dims)
+        global_scores.append(round(gscore, 1))
+        incomplete_flags.append(len(missing) > 0)
+        missing_texts.append("Score calculé sans : " + ", ".join(missing) if missing else "Complet")
+
+    df["score_global"] = global_scores
+    df["incomplete_score"] = incomplete_flags
+    df["missing_dimensions"] = missing_texts
+
+        # === Arrondir toutes les colonnes de score ===
+    score_cols = [
+        "score_resultats_aux_examens",
+        "score_gouvernance_securite",
+        "score_strategie_partenariats",
+        "score_climat_inclusion",
+        "score_ouverture_linguistique",
+        "score_ressources_numerique",
+        "score_global",
+    ]
+    df[score_cols] = df[score_cols].round(1)
 
     return df
 
+
 def get_weights() -> dict[str, float]:
     total = sum(DEFAULT_WEIGHTS.values()) or 1.0
-    return {k: v/total for k, v in DEFAULT_WEIGHTS.items()}
-
+    return {k: v / total for k, v in DEFAULT_WEIGHTS.items()}
